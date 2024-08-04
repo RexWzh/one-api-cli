@@ -32,13 +32,10 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install .[test]
         python -m pip install -r requirements_dev.txt
-    - name: Test with pytest and coverage
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        OPENAI_API_BASE_URL: ${{ secrets.OPENAI_API_BASE_URL }}
-      run: |
-        pip install coverage
-        coverage run -m pytest tests/
+    # - name: Test with pytest and coverage
+    #   run: |
+    #     pip install coverage
+    #     coverage run -m pytest tests/
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:

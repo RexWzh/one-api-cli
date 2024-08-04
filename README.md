@@ -15,8 +15,24 @@
     </a>
 </div>
 
-# Installation
+A Python CLI for the [One API](https://github.com/songquanpeng/one-api) project.
+
+## Setup
+
+Install the package using pip:
 
 ```bash
 pip install one-api-cli
 ```
+
+Setup environment variables:
+
+```bash
+export ONE_API_BASE_URL=https://your_base_url
+export ONE_API_ACCESS_TOKEN=your_access_token # Optional
+export ONE_API_SESSION_TOKEN=your_session_token # Optional
+```
+
+## Usage
+
+See examples in [Jupyter notebooks](demo/one-api.ipynb).
