@@ -2,6 +2,32 @@ import requests
 from .constant import base_url, headers
 from loguru import logger
 
+class Channel():
+    id: int
+    """The ID of the channel."""
+
+    type: int
+    """The type of the channel. Default to OpenAI, i.e. channel type 1."""
+
+    key: str
+    """The api key of the channel."""
+
+    name: str
+    """The display name of the channel."""
+
+    base_url: str
+    """The base URL of the channel."""
+
+    models: str
+    """The models of the channel, separated by commas."""
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+    def update(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
 channel_url = f"{base_url}/api/channel"
 
 def get_channels():
@@ -18,7 +44,7 @@ def get_channels():
         if not msg['success']:
             logger.error(msg['message'])
             return {}
-        return msg['data']
+        return Channel(**msg['data'])
     except requests.RequestException as e:
         logger.error(f"Error fetching channels: {e}")
         return []
@@ -38,7 +64,7 @@ def get_channel(channel_id:int)->dict:
         if not msg['success']:
             logger.error(msg['message'])
             return {}
-        return msg['data']
+        return Channel(**msg['data'])
     except requests.RequestException as e:
         logger.error(f"Error fetching channel: {e}")
         return {}
