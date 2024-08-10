@@ -1,6 +1,6 @@
 [project]
 name = "one-api-cli"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
   { name="Rex Wang", email="1073853456@qq.com" },
 ]
