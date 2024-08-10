@@ -9,6 +9,20 @@ section_token = os.getenv("ONE_API_SECTION_TOKEN")
 assert base_url, "ONE_API_BASE_URL is not set"
 assert access_token or section_token, "Either ONE_API_ACCESS_TOKEN or ONE_API_SECTION_TOKEN must be set"
 
+default_channel_data =  {
+    "name": None,
+    "key": None,
+    "base_url": None,
+    "models": None,
+    "type": 1,
+    "other": "",
+    "model_mapping": "",
+    "groups": ["default"],
+    "config": "{}",
+    "is_edit": False,
+    "group": "default"
+}
+
 # Headers
 if access_token:
     headers = {

@@ -1,177 +1,135 @@
 import requests
-from .constant import base_url, headers
+from .constant import base_url, headers, default_channel_data
 from loguru import logger
-
-class Channel():
-    id: int
-    """The ID of the channel."""
-
-    type: int
-    """The type of the channel. Default to OpenAI, i.e. channel type 1."""
-
-    key: str
-    """The api key of the channel."""
-
-    name: str
-    """The display name of the channel."""
-
-    base_url: str
-    """The base URL of the channel."""
-
-    models: str
-    """The models of the channel, separated by commas."""
-
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
-    def update(self, **kwargs):
-        self.__dict__.update(kwargs)
-
 
 channel_url = f"{base_url}/api/channel"
 
-def get_channels():
+class Channel():
     """
-    Retrieve a list of channels.
+    A class to represent a channel.
+    """
+
+    def __init__(self, id:int):
+        data = self.fetch_channel_data(id)
+        if not data:
+            raise ValueError(f"Channel with ID {id} not found.")
+        self.__dict__.update(data)
     
-    Returns:
-        list: A list of channel dictionaries.
-    """
-    try:
-        response = requests.get(channel_url, headers=headers)
-        response.raise_for_status()
-        msg = response.json()
+    def dumps(self):
+        return self.__dict__.copy()
+    
+    @classmethod
+    def fetch_channel_data(cls, id:int) -> dict:
+        """
+        Fetch the data of a channel.
+
+        Args:
+            id (int): The ID of the channel.
+
+        Returns:
+            dict: The data of the channel.
+        """
+        channel_id_url = f"{channel_url}/{id}"
+        response = cls._make_request('get', channel_id_url)
+        if not response['success']:
+            logger.error(response['message'])
+            raise ValueError(f"Channel with ID {id} not found.")
+        return response['data']
+
+    @staticmethod
+    def get_channels(page=None):
+        """
+        Retrieve a list of channels.
+
+        Returns:
+            list: A list of channel dictionaries.
+        """
+        if page is not None:
+            suffix = f"/?p={page}"
+            channel_data = Channel._make_request('get', channel_url + suffix)['data']
+        else:
+            i = 0
+            channel_data = []
+            while True:
+                suffix = f"?p={i}"
+                response = Channel._make_request('get', channel_url + suffix)
+                new_data = response['data']
+                if not new_data:
+                    break
+                channel_data.extend(new_data)
+                i += 1
+        return [Channel.from_data(**data) for data in channel_data]
+    
+    @staticmethod
+    def from_data(**data:dict):
+        """
+        Create a channel object from data.
+
+        Args:
+            **data: The data of the channel.
+        
+        Returns:
+            Channel: A channel object.
+        """
+        channel = Channel.__new__(Channel)
+        channel.__dict__.update(data)
+        return channel
+
+    def update(self, **channel_data):
+        """Update the channel data."""
+        data = self.__dict__.copy()
+        data.update(channel_data)
+        response = self._make_request('put', channel_url, json=data)
+        if not response['success']:
+            logger.error(response['message'])
+            return False
+        self.__dict__.update(channel_data)
+        return True
+    
+    def delete(self, confim:bool=True):
+        """Delete the channel."""
+        if confim:
+            logger.warning(f"Deleting channel {self.name} with ID {self.id}")
+            c = input("Are you sure? (y/n): ")
+            if c.lower() != 'y': return False
+        channel_id_url = f"{channel_url}/{self.id}"
+        msg = self._make_request('delete', channel_id_url)
         if not msg['success']:
             logger.error(msg['message'])
+            return False
+        return True
+    
+    @staticmethod
+    def create(**channel_data):
+        """Create a new channel.
+        
+        Args:
+            name (str): The name of the channel.
+            key (str): The api key of the channel.
+            base_url (str): The base URL of the channel.
+            models (list): The models of the channel.
+        """
+        data = default_channel_data.copy()
+        data.update(channel_data)
+        assert None not in data.values(), "Missing required fields"
+        response = Channel._make_request('post', channel_url, json=data)
+        if not response['success']:
+            logger.error(response['message'])
+            return False
+        return True
+    
+    @staticmethod
+    def _make_request(method:str, url:str, **kwargs):
+        try:
+            response = requests.request(method, url, headers=headers, **kwargs)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f"Error making request: {e}")
             return {}
-        return Channel(**msg['data'])
-    except requests.RequestException as e:
-        logger.error(f"Error fetching channels: {e}")
-        return []
-    
-def get_channel(channel_id:int)->dict:
-    """
-    Retrieve the data of a channel.
-    
-    Returns:
-        dict: A channel dictionary.
-    """
-    channel_id_url = f"{channel_url}/{channel_id}"
-    try:
-        response = requests.get(channel_id_url, headers=headers)
-        response.raise_for_status()
-        msg = response.json()
-        if not msg['success']:
-            logger.error(msg['message'])
-            return {}
-        return Channel(**msg['data'])
-    except requests.RequestException as e:
-        logger.error(f"Error fetching channel: {e}")
-        return {}
 
-def update_channel(channel_id, **options) -> bool:
-    """
-    Update a channel's data.
+    def __repr__(self) -> str:
+        return f"Channel({self.__dict__})"
     
-    Args:
-        channel_id (int): The ID of the channel.
-        **options: The data to update.
-    
-    Returns:
-        bool: True if the channel is updated successfully, False otherwise.
-    """
-    
-    try:
-        channel_data = get_channel(channel_id)
-        if not channel_data:
-            logger.error(f"Channel with ID {channel_id} not found.")
-            return False
-        channel_data.update(options)
-        response = requests.put(channel_url, headers=headers, json=channel_data)
-        response.raise_for_status()
-        msg = response.json()
-        if not msg['success']:
-            logger.error(msg['message'])
-            return False
-        return True
-    except requests.RequestException as e:
-        logger.error(f"Error updating channel: {e}")
-        return False
-
-def delete_channel(channel_id) -> bool:
-    """
-    Delete a channel.
-    
-    Args:
-        channel_id (int): The ID of the channel.
-    
-    Returns:
-        bool: True if the channel is deleted successfully, False otherwise.
-    """
-    channel_id_url = f"{channel_url}/{channel_id}"
-    try:
-        response = requests.delete(channel_id_url, headers=headers)
-        response.raise_for_status()
-        msg = response.json()
-        if not msg['success']:
-            logger.error(msg['message'])
-            return False
-        return True
-    except requests.RequestException as e:
-        logger.error(f"Error deleting channel: {e}")
-        return False
-
-def create_channel(
-        name, key, base_url, models,
-        type: int = 1,
-        other: str = '',
-        model_mapping: str = '',
-        groups: list = ['default'],
-        config: str = '{}',
-        is_edit: bool = False,
-        group: str = 'default'
-) -> bool:
-    """
-    Create a new channel.
-    
-    Args:
-        name (str): The name of the channel.
-        key (str): The key of the channel.
-        base_url (str): The base URL of the channel.
-        models (list): The models of the channel.
-        type (int): The type of the channel. Default to OpenAI.
-        other (str): Other information of the channel.
-        model_mapping (str): The model mapping of the channel.
-        groups (list): The groups of the channel.
-        config (str): The config of the channel.
-        is_edit (bool): Whether the channel can be edited.
-        group (str): The group of the channel.
-
-    Returns:
-        bool: True if the channel is created successfully, False otherwise.
-    """
-    
-    data = {
-        'name': name,
-        'key': key,
-        'base_url': base_url,
-        'models': models,
-        'type': type,
-        'other': other,
-        'model_mapping': model_mapping,
-        'groups': groups,
-        'config': config,
-        'is_edit': is_edit,
-        'group': group
-    }
-    try:
-        response = requests.post(channel_url, headers=headers, json=data)
-        response.raise_for_status()
-        msg = response.json()
-        if not msg['success']:
-            logger.error(msg['message'])
-            return False
-        return True
-    except requests.RequestException as e:
-        logger.error(f"Error creating channel: {e}")
-        return False
+    def __str__(self) -> str:
+        return f"Channel({self.__dict__})"
